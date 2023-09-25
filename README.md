@@ -30,7 +30,7 @@ This R project is designed to fetch, analyze, and visualize data from Google Sea
    - Write the aggregated data frames to the database.
 
 4. **Data Visualization with Shiny App:**
-   - Launch the Shiny app `ConsoleInsights - Your Google Search Console Analyzer`.
+   - Launch the Shiny app `ConsoleInsights - Your Google Search Console Analyzer` available at [www.statuno.com](http://www.statuno.com).
    - Navigate through various tabs and input options to interactively visualize and analyze the extracted data.
 
 ## How to Run
@@ -47,7 +47,7 @@ This R project is designed to fetch, analyze, and visualize data from Google Sea
    - Launch the Shiny app.
 
 3. **Check Results:**
-   - The results will be written to the specified MySQL database and can be visualized using the Shiny app.
+   - The results will be written to the specified MySQL database and can be visualized using the Shiny app available at [https://thomas-zwanowetz.shinyapps.io/shiny_example/](https://thomas-zwanowetz.shinyapps.io/shiny_example/).
    - You can run SQL queries to analyze the data as needed, or use the Shiny app for interactive analysis.
 
 ## Caution
