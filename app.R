@@ -56,7 +56,7 @@ ui <- dashboardPage(
                     "This Shiny app is designed to fetch and analyze data from the Google Search Console for a specific website, providing users with valuable insights into Google rankings and user behavior. The app showcases data from my own website, ", 
                     tags$a(href = "https://www.statuno.com", target = "_blank", "www.statuno.com"), 
                     ". If you are interested in utilizing this Shiny dashboard for your own website, feel free to contact me or visit ", 
-                    tags$a(href = "https://github.com/zwanoto", target = "_blank", "github.com/zwanoto"), 
+                    tags$a(href = "https://github.com/zwanoto/shiny_example_project", target = "_blank", "github.com/zwanoto"), 
                     " for further instructions and source code.", 
                     tags$br(),
                     tags$br(),
