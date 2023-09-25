@@ -1,13 +1,8 @@
 # Load libraries
 library(DBI)
 library(RMySQL)
-library(shiny)
-library(shinydashboard)
-library(ggplot2)
 library(dplyr)
 library(tidyverse)
-library(zoo)
-library(ggimage)
 library(googleAuthR)
 library(searchConsoleR)
 
