@@ -7,30 +7,34 @@ library(tidyverse)
 library(profvis)
 
 ui <- dashboardPage(
+  # Setting the title of the dashboard
   dashboardHeader(title = "ConsoleInsights - Your Google Search Console Analyzer"),
   
+  # Defining the Sidebar with various Menu Items and conditional Panels for inputs
   dashboardSidebar(
     sidebarMenu(
       id = "tabs",
       menuItem("About", tabName = "page4", icon = icon("info")),
-      
       menuItem("Google Rankings", tabName = "page1", icon = icon("list-ol")),
       menuItem("Clicks and Impressions", tabName = "page2", icon = icon("chart-bar")),
       menuItem("Google Search Milestones", tabName = "page3", icon = icon("chart-bar"))
     ),
+    # Inputs for Google Rankings Tab
     conditionalPanel(
       condition = "input.tabs === 'page1'",
       dateRangeInput("dates", "Select Date Range:", start = Sys.Date() - 365, end = Sys.Date()),
       selectInput("query_type", "Query Type:", choices = c("Top Queries", "Improving Queries", "Declining Queries")),
       selectInput("country", "Country:", choices = c("All", "DACH-area")),
-      selectInput("device", "Device Type:", choices = c("All", "Desktop", "Mobile")),
+      selectInput("device", "Device Type:", choices = c("All", "Desktop", "Mobile"))
     ),
+    # Inputs for Clicks and Impressions Tab
     conditionalPanel(
       condition = "input.tabs === 'page2'",
       dateRangeInput("dates2", "Select Date Range:", start = Sys.Date() - 365, end = Sys.Date()),
-      selectInput("country2", "Country:", choices = c("All", "DACH-area","Austria","Germany","Switzerland")),
+      selectInput("country2", "Country:", choices = c("All", "DACH-area", "Austria", "Germany", "Switzerland")),
       selectInput("device2", "Device Type:", choices = c("All", "Desktop", "Mobile")),
       checkboxInput("addMovingAverage", "Add moving average", value = FALSE),
+      # Additional Input if Moving Average is selected
       conditionalPanel(
         condition = "input.addMovingAverage === true",
         selectInput("movingAverageDays", "Moving Average Days:", choices = c("7 days", "15 days", "30 days", "90 days"))
@@ -38,6 +42,7 @@ ui <- dashboardPage(
     )
   ),
   
+  # Defining the Body of the dashboard with different Tab Items
   dashboardBody(
     tabItems(
       tabItem(tabName = "page4",
@@ -143,9 +148,9 @@ ui <- dashboardPage(
                     )
                 )
               )),
-              tabItem(tabName = "page1",
+     # Google Rankings Page Section
+     tabItem(tabName = "page1",
               h2("Google Rankings for selected queries"),
-              
               fluidRow(
                 box(title = "Google Ranking", plotOutput("scatter_plot"), width = 12)
               ),
@@ -157,7 +162,8 @@ ui <- dashboardPage(
                 box(title = "Most important queries", plotOutput("query_plot"), width = 12)
               )
       ),
-      tabItem(tabName = "page2",
+     # Google Search Console Milestones Page Section
+     tabItem(tabName = "page2",
               fluidRow(
                 box(
                   title = "Total Clicks", 
@@ -208,17 +214,10 @@ ui <- dashboardPage(
               fluidRow(
                 box(title = "", plotOutput("milestones"), width = 12)
               )
-
       )
-              
-              )
-              
-      )
+    )
+  )
 )
-      
-      
-      
-      
 
 
 
@@ -229,19 +228,19 @@ server <- function(input, output, session) {
   con <- dbConnect(RMySQL::MySQL(), dbname = "google_search_console", 
                    host = config$db_host, port = config$db_port, 
                    user = config$db_user, password = config$db_password)
+  # Fetch data from the database tables
   df <- dbGetQuery(con,"SELECT * FROM df_all")
   df1 <- dbGetQuery(con, "SELECT * FROM df1")
-  # Reactive wrapper around the data fetching and processing
+  # Reactive wrapper around the data fetching and processing for df_all
   df_all_reactive <- reactive({
-    
-    # Determine the device and country filter values based on input
-    # Filter the data based on determined filter values
+    # Filter and process df_all based on input device and dates
+    # Handle country filter separately
+    # After filtering, perform necessary calculations and grouping
+    # Return the processed df_all
     df_all <- df %>%
       filter(device == input$device) %>%
       mutate(date = as.Date(date)) %>%
       filter(date >= input$dates[1] & date <= input$dates[2])
-    
-    # If the selected country is not 'All', then filter the rows where country is not 'All'
     if (input$country != 'All') {
       df_all <- df_all %>%
         filter(country != 'All')
@@ -256,24 +255,33 @@ server <- function(input, output, session) {
       summarize(
         position = sum(position * impressions) / sum(impressions),
         impressions = sum(impressions),
-        .groups = 'drop'  # To avoid regrouping message
+        .groups = 'drop' 
       )
-    
     return(df_all)
   })
+  # Reactive wrapper for queries
   queries_reactive <- reactive({
+    # Perform calculations and grouping on df.
+    # Return the modified data frame.
     df_all = df_all_reactive()
     df_all[is.na(df_all)] = 0 
     df_all <- df_all %>% group_by(query) %>% summarize(position = sum(position*impressions)/sum(impressions),impressions = sum(impressions))
+    return(df_all)
   })
+  # Reactive wrapper for result
   result_reactive <- reactive({
+    # Perform grouping, summarization, and ordering on df
+    # Return the best performing queries
     best = df_all_reactive() 
     best = best[complete.cases(best),]
     best = best %>% group_by(query) %>% summarize(position = last(position)) %>% arrange(position)
     return(best)
   })
-  
+  # Reactive wrapper for plot data
   df_plot <- reactive({
+    # Determine the top, best, and worst performing queries
+    # Depending on input$query_type, filter accordingly
+    # Return the df_plot for rendering
     best = df_all_reactive() 
     best = best[complete.cases(best),]
     best = best %>% group_by(query) %>% summarize(performance= last(position)/min(position)) %>% arrange(performance)
@@ -296,7 +304,11 @@ server <- function(input, output, session) {
     return(df_plot)
   })
 
+  # Reactive wrapper around the data fetching and processing for df2
   df2_reactive <- reactive({
+    # Filter and process df1 based on input device2 and country2
+    # Calculate moving averages based on input$movingAverageDays
+    # Return the processed df1
     df1 = df1 %>% filter(device == input$device2)
     if (input$country2 == 'DACH-area'){
       df1 = df1 %>% filter(country != 'All')
@@ -411,7 +423,7 @@ server <- function(input, output, session) {
     print(p)
   })
   
-  # Bar Chart
+  # Bar Chart 1
   output$bar_chart <- renderPlot({
     df1 <- df2_reactive()
     df1$date <- as.Date(df1$date)
@@ -430,9 +442,6 @@ server <- function(input, output, session) {
   
   # Bar Chart 2
   output$bar_chart2 <- renderPlot({
-    # Define label format
-
-    # Plot
     df1 <- df2_reactive()
     df1$date <- as.Date(df1$date)
     df1$weekday <- factor(weekdays(df1$date))
@@ -441,8 +450,6 @@ server <- function(input, output, session) {
     df1_grouped <- df1 %>% 
       group_by(weekday) %>% 
       summarize(impressions = mean(impressions), .groups = 'drop')
-    
-    # Creating the plot with improved aesthetics
     ggplot(df1_grouped, aes(x = weekday, y = impressions)) +
       geom_bar(stat = 'identity', show.legend = FALSE) +
       theme_minimal() + 
@@ -452,10 +459,6 @@ server <- function(input, output, session) {
   
   # Bar Chart 3
   output$bar_chart3 <- renderPlot({
-    # Define label format
-    label_format <- function(x) format(1/x, digits = 2)
-    
-    # Plot
     df1 <- df2_reactive()
     df1$date <- as.Date(df1$date)
     df1$month <- factor(month(df1$date))
@@ -464,7 +467,6 @@ server <- function(input, output, session) {
       group_by(month) %>% 
       summarize(clicks = mean(clicks), .groups = 'drop')
     
-    # Creating the plot with improved aesthetics
     ggplot(df1_grouped, aes(x = month, y = clicks)) +
       geom_bar(stat = 'identity', show.legend = FALSE) +
       theme_minimal() + 
@@ -474,18 +476,12 @@ server <- function(input, output, session) {
   
   # Bar Chart 4
   output$bar_chart4 <- renderPlot({
-    # Define label format
-    label_format <- function(x) format(1/x, digits = 2)
-    
-    # Plot
     df1 <- df2_reactive()
     df1$date <- as.Date(df1$date)
     df1$month <- factor(month(df1$date))
-    
     df1_grouped <- df1 %>% 
       group_by(month) %>% 
       summarize(impressions = mean(impressions), .groups = 'drop')
-    
     # Creating the plot with improved aesthetics
     ggplot(df1_grouped, aes(x = month, y = impressions)) +
       geom_bar(stat = 'identity', show.legend = FALSE) +
@@ -505,10 +501,12 @@ server <- function(input, output, session) {
       scale_y_log10() 
     print(p)    
   })
+  
   output$top_queries <- renderTable({
     result = result_reactive()
-    head(result,3)  # Here, I'm using the first few rows of the mtcars dataset. Replace this with your data.
+    head(result,3)  
   })
+  
   output$attention_queries <- renderTable({
     best = df_all_reactive() 
     best = best[complete.cases(best),]
@@ -516,21 +514,18 @@ server <- function(input, output, session) {
     best = best[1:3,]
     return(best)
   })
+  
   output$milestones <- renderPlot({
     df1 <- df1 %>%
       filter(country == 'All', device == 'All')
-    
     df1$date <- as.Date(df1$date)
     df1$last_30_days <- 30 * zoo::rollmean(df1$clicks, k = 30, align = 'right', fill = NA)
-    
     # Initialize a variable to track if thresholds have been crossed
     cross_index20 <- which(df1$last_30_days >= 20)[1]
     cross_index30 <- which(df1$last_30_days >= 30)[1]
     cross_index40 <- which(df1$last_30_days >= 40)[1]
     df1$milestone = FALSE
     df1$milestone[c(cross_index20,cross_index30,cross_index40)]  = TRUE
-    # Create a dataframe to store milestone points
-   
     ggplot(df1, aes(x = date, y = last_30_days)) +
       geom_line() +  # Line plot
       geom_point(data = df1[df1$milestone, ], aes(color = milestone), size = 3, fill = "red") +  # Points for milestones
@@ -543,11 +538,7 @@ server <- function(input, output, session) {
       theme(legend.position = "none") +  # Remove the legend
       geom_hline(yintercept = 50, linetype = "dashed", color = "blue") +  # Add dashed line at y = 50
       annotate("text", x = max(df1$date), y = 50, label = "Next Milestone", hjust = 1.1, vjust = 0.5)  # Add text annotation
-    
   })
-  
-  
-  
 }
 
 shinyApp(ui = ui, server = server)
